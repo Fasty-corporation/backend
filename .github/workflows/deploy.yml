@@ -1,0 +1,65 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Code Checkout (Repo se code le raha hai)
+        uses: actions/checkout@v3
+
+      - name: Node.js Setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Linting (Code errors check kar raha hai)
+        run: npm run lint
+
+      - name: Build Project
+        run: npm run build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v3
+
+      - name: Node.js Setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Deploy to Server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          USER: ${{ secrets.USER }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -o StrictHostKeyChecking=no -i private_key.pem $USER@$SERVER_IP << EOF
+            cd /var/www/fasty-backend
+            git pull origin main
+            npm install
+            pm2 restart all
+          EOF
