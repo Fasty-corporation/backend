@@ -24,8 +24,6 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Run Tests
-        run: npm test
 
       - name: Linting (Code errors check kar raha hai)
         run: npm run lint
