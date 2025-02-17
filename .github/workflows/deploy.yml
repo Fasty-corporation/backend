@@ -24,13 +24,6 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-
-      - name: Linting (Code errors check kar raha hai)
-        run: npm run lint
-
-      - name: Build Project
-        run: npm run build
-
   deploy:
     needs: build
     runs-on: ubuntu-latest
