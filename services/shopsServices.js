@@ -16,6 +16,13 @@ const shopServices = {
             throw new Error(error.message);
         }
     },
+    authenticateShopService: async (shop_id, password) => {
+        const shop = await Shop.findById(shop_id);
+        if (!shop) return null;
+    
+        const isMatch = await bcrypt.compare(password, shop.password);
+        return isMatch ? shop : null;
+    },
 
     // Get all shops
     getAllShopsService: async () => {

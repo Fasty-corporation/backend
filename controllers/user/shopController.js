@@ -1,5 +1,5 @@
 const shopServices = require('../../services/shopsServices');
-
+const jwt = require("jsonwebtoken")
 const shopController = {
     // Create a new shop
     createShop: async (req, res) => {
@@ -14,7 +14,33 @@ const shopController = {
             return res.status(500).json({ message: error.message });
         }
     },
+       // Shop login (returns JWT token)
+       loginShop: async (req, res) => {
+        try {
+            const { shop_id, password } = req.body;
+            if (!shop_id || !password) {
+                return res.status(400).json({ message: 'Shop ID and password are required' });
+            }
 
+            const shop = await shopServices.authenticateShopService(shop_id, password);
+            if (!shop) {
+                return res.status(401).json({ message: 'Invalid credentials' });
+            }
+
+            // Generate JWT token
+            const token = jwt.sign(
+                { shopId: shop._id, name: shop.name },
+                process.env.JWT_SECRET || 'your_secret_key',
+                { expiresIn: '1h' }
+            );
+
+            return res.status(200).json({ token, shop });
+        } catch (error) {
+            console.log(error)
+            return res.status(500).json({ message: error.message });
+        }
+    }
+,
     // Get all shops
     getAllShops: async (req, res) => {
         try {

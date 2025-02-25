@@ -6,6 +6,7 @@ const { adminLogIn, verifyAdmin } = require('../controllers/admin/adminAuthContr
 const express = require('express')
 const adminAuthMiddleware = require('../middlewares/admin/adminAuthMiddleware')
 const { createInventory, getInventoryDetails, findShopInventory, updateInventory, deleteInventory } = require('../controllers/admin/InventoryController')
+const { loginShop } = require('../controllers/user/shopController')
 
 const router = express.Router()
 router.post('/login', adminLogIn)
