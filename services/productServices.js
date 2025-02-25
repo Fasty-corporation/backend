@@ -82,7 +82,7 @@ const productServices = {
         }
     },
 
-    // product details,service to fetch particular product details 
+    // product details service to fetch particular product details 
     getProductDetailsService: async (id) => {
         try {
             const dbRes = await Product.findOne({
@@ -100,40 +100,57 @@ const productServices = {
         }
     },
 
+    // find products by category
     findCategoryProductsService: async (mainCategoryId, subCategoryId) => {
         try {
-            if (subCategoryId == 'all') {
-                const dbRes = await Product.findAll({
+            let dbRes;
+            if (subCategoryId === 'all') {
+                dbRes = await Product.findAll({
                     where: { mainCategoryId },
                     include: [{ model: ProductType }]
-
                 })
-                // parsing the product urls 
-                dbRes.forEach((product) => {
-                    product.imageUrls = JSON.parse(product.imageUrls)
+            } else {
+                dbRes = await Product.findAll({
+                    where: { subCategoryId },
+                    include: [{ model: ProductType }]
                 })
-                return dbRes
             }
-
-            const dbRes = await Product.findAll({
-                where: { subCategoryId },
-                include: [{ model: ProductType }]
-
-            })
-
-            // parsing the product urls 
             dbRes.forEach((product) => {
                 product.imageUrls = JSON.parse(product.imageUrls)
             })
             return dbRes
+        } catch (error) {
+            throw error
+        }
+    },
 
+    // update product service
+    editProductService: async (id, updatedData) => {
+        try {
+            const product = await Product.findByIdAndUpdate(id)
+            if (!product) {
+                throw new Error("Product not found")
+            }
+            await product.updateOne(updatedData)
+            return product
+        } catch (error) {
+            throw error
+        }
+    },
 
+    // delete product service
+    deleteProductService: async (id) => {
+        try {
+            const product = await Product.findByIdAndDelete(id)
+            if (!product) {
+                throw new Error("Product not found")
+            }
+            await product.deleteOne()
+            return { message: "Product deleted successfully" }
         } catch (error) {
             throw error
         }
     }
-
 }
 
-
-module.exports = productServices
+module.exports = productServices;

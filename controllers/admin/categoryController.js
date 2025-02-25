@@ -1,93 +1,135 @@
-const { createCategoryService, getAllCategoriesService, createSubCategoryService, getAllSubCategoriesService } = require('../../services/categoryServices')
+const { 
+    createCategoryService, 
+    getAllCategoriesService, 
+    createSubCategoryService, 
+    getAllSubCategoriesService, 
+    updateCategoryService, 
+    deleteCategoryService, 
+    updateSubCategoryService, 
+    deleteSubCategoryService 
+} = require('../../services/categoryServices')
 const { getSubCategoriesService } = require('../../services/userCategoryServices')
 
 const categoryController = {
-
-    // to add main category 
+    // Add main category
     addCategory: async (req, res) => {
-
-        const { name, imageUrl } = req.body
+        const { name, imageUrl } = req.body;
         if (!name || !imageUrl) {
-            return res.status(400).send({ message: "error while creating category" })
+            return res.status(400).send({ message: "Error while creating category" });
         }
         try {
-            const dbRes = await createCategoryService(name, imageUrl)
-            const data = { message: "Category added", name, imageUrl, id: dbRes.id }
-            return res.send(data)
-
+            const dbRes = await createCategoryService(name, imageUrl);
+            return res.send({ message: "Category added", id: dbRes.id, name, imageUrl });
         } catch (error) {
-            res.status(400).send({ message: 'Error! while creating category' })
+            res.status(400).send({ message: 'Error! while creating category' });
         }
-
-
     },
 
-    // get all categories
+    // Get all categories
     getAllCategories: async (req, res) => {
         try {
-            const dbRes = await getAllCategoriesService()
-            return res.send(dbRes)
-
+            const dbRes = await getAllCategoriesService();
+            return res.send(dbRes);
         } catch (error) {
-            res.status(400).send({ message: 'Something went wrong' })
+            res.status(400).send({ message: 'Something went wrong' });
         }
     },
 
-
-
-    // for adding a subcategory
-    addSubCategory: async (req, res) => {
-        const { name, imageUrl, categoryId } = req.body
-
-        if (!name || !imageUrl || !categoryId) {
-            return res.status(500).send({ message: "error ! while creating subcategory" })
+    // Edit category
+    editCategory: async (req, res) => {
+        const { id } = req.params;
+        const { name, imageUrl } = req.body;
+        if (!id || !name || !imageUrl) {
+            return res.status(400).send({ message: "Missing required fields" });
         }
         try {
-            const dbRes = await createSubCategoryService(name, imageUrl, categoryId)
-            const addedSubCategory = {
-                name,
-                imageUrl,
-                id: dbRes.id,
-                mainCategoryId: categoryId
-            }
-            return res.send(addedSubCategory)
-
+            await updateCategoryService(id, name, imageUrl);
+            return res.send({ message: "Category updated successfully" });
         } catch (error) {
-            res.status(400).send({ message: "error ! while creating subcategory" })
+            res.status(400).send({ message: "Error while updating category" });
         }
-
     },
 
-    // for getting all the subcategories 
+    // Delete category
+    deleteCategory: async (req, res) => {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).send({ message: "Category ID is required" });
+        }
+        try {
+            await deleteCategoryService(id);
+            return res.send({ message: "Category deleted successfully" });
+        } catch (error) {
+            res.status(400).send({ message: "Error while deleting category" });
+        }
+    },
+
+    // Add subcategory
+    addSubCategory: async (req, res) => {
+        const { name, imageUrl, categoryId } = req.body;
+        if (!name || !imageUrl || !categoryId) {
+            return res.status(400).send({ message: "Error! while creating subcategory" });
+        }
+        try {
+            const dbRes = await createSubCategoryService(name, imageUrl, categoryId);
+            return res.send({ message: "Subcategory added", id: dbRes.id, name, imageUrl, categoryId });
+        } catch (error) {
+            res.status(400).send({ message: "Error! while creating subcategory" });
+        }
+    },
+
+    // Get all subcategories
     getAllSubCategories: async (req, res) => {
         try {
-            const dbRes = await getAllSubCategoriesService()
-            return res.send(dbRes)
+            const dbRes = await getAllSubCategoriesService();
+            return res.send(dbRes);
         } catch (error) {
-            res.status(500).send({ message: "error while gettng subcategories" })
+            res.status(500).send({ message: "Error while getting subcategories" });
         }
     },
 
+    // Get subcategories by main category
     getSubCategoriesByMainCategory: async (req, res) => {
-        const { id } = req.query
+        const { id } = req.query;
         if (!id) {
-            return res.status(500).send({ message: "error while gettng subcategories" })
+            return res.status(400).send({ message: "Category ID is required" });
         }
         try {
-            const subCategories = await getSubCategoriesService(id)
-            return res.send(subCategories)
+            const subCategories = await getSubCategoriesService(id);
+            return res.send(subCategories);
+        } catch (error) {
+            res.status(500).send({ message: "Error while getting subcategories" });
         }
-        catch (error) {
-            res.status(500).send({ message: "error while gettng subcategories" })
+    },
 
+    // Edit subcategory
+    editSubCategory: async (req, res) => {
+        const { id } = req.params;
+        const { name, imageUrl, categoryId } = req.body;
+        if (!id || !name || !imageUrl || !categoryId) {
+            return res.status(400).send({ message: "Missing required fields" });
         }
+        try {
+            await updateSubCategoryService(id, name, imageUrl, categoryId);
+            return res.send({ message: "Subcategory updated successfully" });
+        } catch (error) {
+            res.status(400).send({ message: "Error while updating subcategory" });
+        }
+    },
 
+    // Delete subcategory
+    deleteSubCategory: async (req, res) => {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).send({ message: "Subcategory ID is required" });
+        }
+        try {
+            await deleteSubCategoryService(id);
+            return res.send({ message: "Subcategory deleted successfully" });
+        } catch (error) {
+            res.status(400).send({ message: "Error while deleting subcategory" });
+        }
     }
+};
 
-
-
-
-}
-
-
-module.exports = categoryController
+module.exports = categoryController;

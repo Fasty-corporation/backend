@@ -1,20 +1,26 @@
-const { Sequelize } = require('sequelize')
-const pg = require('pg')
+const mongoose = require("mongoose");
 
-const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USERNAME, process.env.DB_PWD, {
-    dialect: process.env.DIALECT,
-    host: process.env.DB_HOST,
-    logging: false,
-    dialectModule: pg,
-    dialectOptions: {
-        ssl: {
-            require: true,
-            rejectUnauthorized: false
-        }
-    }
-})
+const connectDatabase = () => {
+  const dbURI = "mongodb+srv://adityadhopte16:bPZ39Sf6pfmaKzFJ@cluster0.bq1nb.mongodb.net/fasty";
+  // console.log("Connecting to database:", dbURI);
 
+  mongoose
+    .connect(dbURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    })
+    .then((data) => {
+      console.log(`Mongodb connected with server: ${data.connection.host}`);
+    })
+    .catch((err) => {
+      console.error('Error connecting to MongoDB:', err);
+      // Further debug output
+      if (err.name === 'MongoNetworkError') {
+        console.error("MongoNetworkError: Network issues, MongoDB server might not be running.");
+      } else if (err.name === 'MongooseServerSelectionError') {
+        console.error("MongooseServerSelectionError: Cannot reach MongoDB server.");
+      }
+    });
+};
 
-
-
-module.exports = sequelize
+module.exports = connectDatabase;

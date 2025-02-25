@@ -1,17 +1,12 @@
-const sequelize = require("../util/database");
-const { INTEGER, JSON } = require('sequelize')
+const mongoose = require('mongoose');
 
-const Address = sequelize.define('address', {
-    id: {
-        type: INTEGER,
-        allowNull: false,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    address: { type: JSON },
+const addressSchema = new mongoose.Schema({
+    address: {
+        type: Object,  // JSON in Sequelize can be stored as an Object in Mongoose
+        required: true
+    }
+}, { timestamps: true });
 
-})
+const Address = mongoose.model('Address', addressSchema);
 
-
-
-module.exports = Address
+module.exports = Address;

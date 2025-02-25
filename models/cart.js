@@ -1,17 +1,12 @@
-const sequelize = require("../util/database");
-const { INTEGER } = require('sequelize')
+const mongoose = require('mongoose');
 
-const Cart = sequelize.define('cart', {
-    id: {
-        type: INTEGER,
-        allowNull: false,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    quantity: { type: INTEGER },
+const cartSchema = new mongoose.Schema({
+    quantity: {
+        type: Number,  // INTEGER in Sequelize maps to Number in Mongoose
+        required: true
+    }
+}, { timestamps: true });
 
-})
+const Cart = mongoose.model('Cart', cartSchema);
 
-
-
-module.exports = Cart
+module.exports = Cart;
