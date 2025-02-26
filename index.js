@@ -9,7 +9,7 @@ const connectDB = require("./util/database"); // Ensure this is correctly implem
 const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRoutes");
 const shopRoutes = require("./routes/shopsRoutes");
-
+// const deliveryBoy = require("./routes/deliveryBoyRoutes")
 // Initialize express app
 const app = express();
 
@@ -22,7 +22,7 @@ app.use(bodyParser.json());
 app.use("/admin", adminRoutes);
 app.use("/user", userRoutes);
 app.use("/shop", shopRoutes);
-
+// app.use("/api/deliveryBoy",deliveryBoy)
 // Root route
 app.get("/", (req, res) => {
   res.send("Hello World!");

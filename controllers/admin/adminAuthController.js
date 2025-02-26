@@ -1,6 +1,8 @@
 const { checkAdminPassword, generateToken, decodeToken } = require("../../functions/helperFunction")
-
+const Admin = require("../../models/userDetails")
+const bcrypt = require("bcrypt")
 const adminAuthController = {
+
     adminLogIn: async (req, res) => {
         const { email, password } = req.body
         if (!email || !password) {

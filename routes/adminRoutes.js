@@ -7,7 +7,8 @@ const express = require('express')
 const adminAuthMiddleware = require('../middlewares/admin/adminAuthMiddleware')
 const { createInventory, getInventoryDetails, findShopInventory, updateInventory, deleteInventory } = require('../controllers/admin/InventoryController')
 const { loginShop } = require('../controllers/user/shopController')
-
+const { createDeliveryBoy, getAllDeliveryBoys, getDeliveryBoyByMobile, loginDeliveryBoy, waitForUpdates, updateDeliveryBoyLocation, assignOrder } = require("../controllers/user/deliveryboyController");
+// const { loginShop } = require("../controllers/user/shopController");
 const router = express.Router()
 router.post('/login', adminLogIn)
 router.post('/verifyadmin', verifyAdmin)
@@ -22,7 +23,7 @@ router.post('/addproduct', addProduct);
 router.put("/products/:id", editProduct);
 router.delete("/products/:id",deleteProduct);
 router.post('/addproducttype', adminAuthMiddleware, addProductType)
-router.post('/offer/createoffer', adminAuthMiddleware, createOffer)
+router.post('/offer/createoffer', createOffer)
 router.post('/offer/giveoffer', adminAuthMiddleware, giveOffer)
 router.get('/getallproducts', getAllProduct)
 router.get('/getallcategories', getAllCategories)
@@ -39,6 +40,18 @@ router.get('/get', getInventoryDetails);
 router.get('/shop/:shop_id', findShopInventory);
 router.put('/update', updateInventory);
 router.delete('/delete', deleteInventory);
+
+//delivery
+router.post("/delivery/create",createDeliveryBoy);
+router.get("/delivery/all",getAllDeliveryBoys);
+router.get("/delivery/:mobile_number",getDeliveryBoyByMobile);
+router.post("/delivery/login",loginDeliveryBoy);
+router.post("/shop/login",loginShop);
+router.post("/assign/order", assignOrder);
+// / **Real-time API Endpoints**
+router.get("/updates",waitForUpdates);
+router.post("/update-location", updateDeliveryBoyLocation);
+
 
 // exporting the router object
 module.exports = router
