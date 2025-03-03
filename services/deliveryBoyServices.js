@@ -1,9 +1,9 @@
 const DeliveryBoy = require("../models/deliveryboyModel");
 
 const deliveryBoyServices = {
-    createDeliveryBoyService: async (name, mobile_number, password, current_location) => {
+    createDeliveryBoyService: async (name, mobile, password, current_location) => {
         try {
-            const createdDeliveryBoy = await DeliveryBoy.create({ name, mobile_number, password, current_location });
+            const createdDeliveryBoy = await DeliveryBoy.create({ name, mobile, password, current_location });
             return createdDeliveryBoy;
         } catch (error) {
             throw error;

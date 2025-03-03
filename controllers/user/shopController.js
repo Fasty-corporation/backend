@@ -1,96 +1,232 @@
 const shopServices = require('../../services/shopsServices');
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
+const otpService = require("../../services/otpService");
+const bcrypt = require("bcrypt");
+const Shop = require("../../models/shops");
+
 const shopController = {
-    // Create a new shop
+    // Create a new shop with OTP verification
     createShop: async (req, res) => {
         try {
-            const { name, location, password } = req.body;
-            if (!name || !location || !password) {
+            const { name, location, mobile, owner_name, address, gst } = req.body;
+            if (!name || !location  || !mobile || !owner_name || !address || !gst) {
                 return res.status(400).json({ message: 'All fields are required' });
             }
-            const newShop = await shopServices.createShopService(name, location, password);
-            return res.status(201).json(newShop);
+            
+            // Check if shop already exists
+            const existingShop = await Shop.findOne({ mobile });
+            if (existingShop) {
+                return res.status(400).json({ message: 'Shop with this mobile number already exists' });
+            }
+            
+            // Generate and send OTP
+            const otp = await otpService.generateOTP(mobile);
+            await otpService.sendOTP(mobile, otp);
+            req.app.get('socketio').emit("shop:create:otpSent", { mobile, message: "OTP sent successfully" });
+            
+            // const hashedPassword = await bcrypt.hash(password, 10);
+            const newShop = new Shop({
+                name,
+                owner_name,
+                address,
+                gst,
+                // password: hashedPassword,
+                mobile,
+                location,
+                verify: { otp, verified: false }
+            });
+            await newShop.save();
+
+            return res.status(200).json({ message: 'OTP sent to mobile number', mobile , newShop});
         } catch (error) {
             return res.status(500).json({ message: error.message });
         }
     },
-       // Shop login (returns JWT token)
-       loginShop: async (req, res) => {
+
+    verifyOtp: async (req, res) => {
         try {
-            const { shop_id, password } = req.body;
-            if (!shop_id || !password) {
-                return res.status(400).json({ message: 'Shop ID and password are required' });
+            const { mobile, otp } = req.body;
+            if (!mobile || !otp) {
+                return res.status(400).json({ message: "Mobile number and OTP are required" });
             }
-
-            const shop = await shopServices.authenticateShopService(shop_id, password);
+    
+            const shop = await Shop.findOne({ mobile });
             if (!shop) {
-                return res.status(401).json({ message: 'Invalid credentials' });
+                return res.status(404).json({ message: 'Shop not found' });
             }
+            
+            const isValid = otpService.verifyOTP(mobile, otp);
+            if (!isValid) {
+                return res.status(400).json({ message: "Invalid or expired OTP" });
+            }
+            
+            shop.verify.verified = true;
+            await shop.save();
+            req.app.get('socketio').emit("shop:verifyOtp", { mobile, message: "OTP verified successfully" });
+            
+            return res.status(200).json({ message: "OTP verified successfully" });
+        } catch (error) {
+            return res.status(500).json({ message: error.message });
+        }
+    },
 
-            // Generate JWT token
+    loginShop: async (req, res) => {
+        try {
+            const { mobile } = req.body;
+            if (!mobile) {
+                return res.status(400).json({ message: 'Mobile number is required' });
+            }
+    
+            const shop = await Shop.findOne({ mobile });
+            if (!shop) {
+                return res.status(404).json({ message: 'Shop not found' });
+            }
+    
+            const otp = await otpService.generateOTP(mobile);
+            await otpService.sendOTP(mobile, otp);
+            req.app.get('socketio').emit("shop:login:otpSent", { mobile, message: "OTP sent for login" });
+            return res.status(200).json({ message: 'OTP sent to mobile number' });
+        } catch (error) {
+            return res.status(500).json({ message: error.message });
+        }
+    },
+
+    verifyLoginOTP: async (req, res) => {
+        try {
+            const { mobile, otp } = req.body;
+            if (!mobile || !otp) {
+                return res.status(400).json({ message: 'Mobile number and OTP are required' });
+            }
+    
+            const isOtpValid = otpService.verifyOTP(mobile, otp);
+            if (!isOtpValid) {
+                return res.status(400).json({ message: 'Invalid or expired OTP' });
+            }
+    
+            const shop = await Shop.findOne({ mobile });
+            if (!shop) {
+                return res.status(404).json({ message: 'Shop not found' });
+            }
+    
             const token = jwt.sign(
                 { shopId: shop._id, name: shop.name },
                 process.env.JWT_SECRET || 'your_secret_key',
                 { expiresIn: '1h' }
             );
-
-            return res.status(200).json({ token, shop });
+            req.app.get('socketio').emit("shop:login:success", { mobile, message: "Shop logged in successfully" });
+            return res.status(200).json({ token });
         } catch (error) {
-            console.log(error)
             return res.status(500).json({ message: error.message });
         }
-    }
-,
-    // Get all shops
+    },
+
     getAllShops: async (req, res) => {
         try {
-            const shops = await shopServices.getAllShopsService();
+            const shops = await Shop.find();
+            req.app.get('socketio').emit("shop:getAll", { message: "All shops retrieved" });
             return res.status(200).json(shops);
         } catch (error) {
             return res.status(500).json({ message: error.message });
         }
     },
 
-    // Get a shop by ID
     getShopById: async (req, res) => {
         try {
             const { shopId } = req.params;
-            if (!shopId) {
-                return res.status(400).json({ message: 'Shop ID is required' });
+            const shop = await Shop.findById(shopId);
+            if (!shop) {
+                return res.status(404).json({ message: 'Shop not found' });
             }
-            const shop = await shopServices.getShopByIdService(shopId);
+            req.app.get('socketio').emit("shop:getById", { shopId, message: "Shop details retrieved" });
             return res.status(200).json(shop);
         } catch (error) {
             return res.status(500).json({ message: error.message });
         }
     },
 
-    // Update a shop
     updateShop: async (req, res) => {
         try {
             const { shopId } = req.params;
             const updatedData = req.body;
-            if (!shopId) {
-                return res.status(400).json({ message: 'Shop ID is required' });
+            const updatedShop = await Shop.findByIdAndUpdate(shopId, updatedData, { new: true });
+            if (!updatedShop) {
+                return res.status(404).json({ message: 'Shop not found' });
             }
-            const updatedShop = await shopServices.updateShopService(shopId, updatedData);
+            req.app.get('socketio').emit("shop:update", { shopId, message: "Shop updated successfully" });
             return res.status(200).json(updatedShop);
         } catch (error) {
             return res.status(500).json({ message: error.message });
         }
     },
 
-    // Delete a shop
     deleteShop: async (req, res) => {
         try {
             const { shopId } = req.params;
-            if (!shopId) {
-                return res.status(400).json({ message: 'Shop ID is required' });
+            const deletedShop = await Shop.findByIdAndDelete(shopId);
+            if (!deletedShop) {
+                return res.status(404).json({ message: 'Shop not found' });
             }
-            const result = await shopServices.deleteShopService(shopId);
-            return res.status(200).json(result);
+            req.app.get('socketio').emit("shop:delete", { shopId, message: "Shop deleted successfully" });
+            return res.status(200).json({ message: 'Shop deleted successfully' });
         } catch (error) {
             return res.status(500).json({ message: error.message });
+        }
+    },
+    createOrUpdateShopProfile : async (req, res) => {
+        try {
+            const { shopId } = req.params;
+            const { bank, ifsc, ac_number, pan, aadhaar } = req.body;
+    
+            const shop = await Shop.findById(shopId);
+            if (!shop) {
+                return res.status(404).json({ message: 'Shop not found' });
+            }
+    
+            shop.profile = {
+                account_details: { bank, ifsc, ac_number },
+                pan,
+                aadhaar
+            };
+    
+            await shop.save();
+    
+            res.status(200).json({ message: 'Shop profile updated successfully', profile: shop.profile });
+        } catch (error) {
+            res.status(500).json({ message: 'Error updating shop profile', error: error.message });
+        }
+    },
+    // Get Shop Profile
+    getShopProfile : async (req, res) => {
+        try {
+            const { shopId } = req.params;
+    
+            const shop = await Shop.findById(shopId, 'profile');
+            if (!shop) {
+                return res.status(404).json({ message: 'Shop not found' });
+            }
+    
+            res.status(200).json({ profile: shop.profile });
+        } catch (error) {
+            res.status(500).json({ message: 'Error fetching shop profile', error: error.message });
+        }
+    }
+    ,
+    // Delete Shop Profile
+    deleteShopProfile : async (req, res) => {
+        try {
+            const { shopId } = req.params;
+    
+            const shop = await Shop.findById(shopId);
+            if (!shop) {
+                return res.status(404).json({ message: 'Shop not found' });
+            }
+    
+            shop.profile = {}; // Remove profile data
+            await shop.save();
+    
+            res.status(200).json({ message: 'Shop profile deleted successfully' });
+        } catch (error) {
+            res.status(500).json({ message: 'Error deleting shop profile', error: error.message });
         }
     }
 };

@@ -21,8 +21,7 @@ const orderController = {
                 const productTotal = curr.quantity * curr.price;
                 return prev + productTotal;
             }, 0)
-
-            // if user applied some offer
+            
             if (offerId) {
                 const appliedOffer = await findOfferbyId(offerId)
                 if (appliedOffer) { totalPrice = totalPrice - Math.floor((totalPrice * (appliedOffer.discount / 100))) }
@@ -53,6 +52,7 @@ const orderController = {
             })
 
         } catch (error) {
+            console.log(error)
             console.log(error.message)
             res.status(500).send({ message: "internal server error", error })
         }

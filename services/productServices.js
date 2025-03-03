@@ -18,6 +18,7 @@ const productServices = {
             return dbRes
 
         } catch (error) {
+            console.log(error)
             throw error
         }
     },

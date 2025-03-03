@@ -2,14 +2,25 @@ const Inventory  = require('../models/inventory');
 
 const inventoryServices = {
     // Create a new inventory entry
-    createInventoryService: async (shop_id, product_id, quantity, availability_status) => {
-        try {
-            return await Inventory.create({ shop_id, product_id, quantity, availability_status });
-        } catch (error) {
-            throw new Error(`Error creating inventory: ${error.message}`);
-        }
-    },
-
+        createInventory: async (shop_id, shop_owner, product_id, category, sub_category, product_type, stock, price, availability_status) => {
+            try {
+                const newInventory = new Inventory({
+                    shop_id,
+                    shop_owner,
+                    product_id,
+                    category,
+                    sub_category,
+                    product_type,
+                    stock,
+                    price,
+                    availability_status
+                });
+    
+                return await newInventory.save();
+            } catch (error) {
+                throw new Error(`Error creating inventory: ${error.message}`);
+            }
+        },
     // Get inventory details by ID
     getInventoryDetailsService: async (id) => {
         try {

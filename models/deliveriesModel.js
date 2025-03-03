@@ -1,19 +1,21 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const DeliverySchema = new mongoose.Schema(
   {
     delivery_id: {
       type: mongoose.Schema.Types.ObjectId,
-      auto: true,
+      required: true,
+      unique: true,
+      autoIncrement: true,
     },
     order_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
+      ref: 'Order',
       required: true,
     },
     delivery_boy_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "DeliveryBoy",
+      ref: 'DeliveryBoy',
       required: true,
     },
     pickup_details: {
@@ -22,20 +24,23 @@ const DeliverySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Pending", "Picked Up", "In Transit", "Delivered", "Cancelled"],
-      default: "Pending",
+      enum: ['Pending', 'In Transit', 'Delivered', 'Cancelled'],
+      default: 'Pending',
     },
-    location_history: [
-      {
-        latitude: { type: Number, required: true },
-        longitude: { type: Number, required: true },
-        timestamp: { type: Date, default: Date.now },
-      },
-    ],
+    location_history: {
+      type: [
+        {
+          latitude: Number,
+          longitude: Number,
+          timestamp: Date,
+        },
+      ],
+      default: [],
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-const Delivery = mongoose.model("Delivery", DeliverySchema);
-
-module.exports = Delivery;
+module.exports = mongoose.model('Delivery', DeliverySchema);

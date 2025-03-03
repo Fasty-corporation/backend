@@ -20,18 +20,18 @@ const DeliveryBoySchema = new Schema({
     type: String,
     required: false,
   },
-  current_location: {
-    type: {
-      type: String,
-      enum: ["Point"],
-      default: "Point",
-      required : false
-    },
-    coordinates: {
-      type: [Number],
-      required: false,
-    },
-  },
+//   current_location: {
+//     type: {
+//       type: String,
+//       enum: ["Point"],
+//       default: "Point",
+//       required : false
+//     },
+//     coordinates: {
+//       type: [Number],
+//       required: false,
+//     },
+//   },
   location_history: [
     {
         latitude: { type: Number, required: true },
@@ -43,4 +43,4 @@ const DeliveryBoySchema = new Schema({
 
 DeliveryBoySchema.index({ current_location: "2dsphere" });
 
-module.exports = mongoose.model("DeliveryBoy", DeliveryBoySchema);
+module.exports = mongoose.model("userDeliveryBoy", DeliveryBoySchema);

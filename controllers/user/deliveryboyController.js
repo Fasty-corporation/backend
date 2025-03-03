@@ -4,17 +4,79 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const Shop = require("../../models/shops");
 const DeliveryBoy = require("../../models/deliveryboyModel");
-
+const otpService = require("../../services/otpService")
 const deliveryBoyController = {
+     sendOtp : async (req, res) => {
+        try {
+            const { mobile } = req.body;
+            if (!mobile) {
+                return res.status(400).json({ message: "Mobile number is required" });
+            }
+    
+            // Check if customer already exists
+            let customer = await DeliveryBoy.findOne({ mobile });
+    
+            if (!customer) {
+                // Create a new customer with unverified status
+                customer = new DeliveryBoy({ mobile });
+                await customer.save();
+            }
+    
+            // Generate and send OTP
+            const otp = await otpService.generateOTP(mobile);
+            await otpService.sendOTP(mobile, otp);
+    
+            // Emit OTP sent event
+            const io = req.app.get('socketio');
+            io.emit("otp-sent", { mobile, message: "OTP sent successfully" });
+    
+            return res.status(200).json({ message: "OTP sent successfully", mobile });
+        } catch (error) {
+            return res.status(500).json({ message: error.message });
+        }
+    },
+     verifyOtp : async (req, res) => {
+        try {
+            const { mobile, otp } = req.body;
+    
+            if (!mobile || !otp) {
+                return res.status(400).json({ message: "Mobile number and OTP are required" });
+            }
+    
+            const isOtpValid = otpService.verifyOTP(mobile, otp);
+            if (!isOtpValid) {
+                return res.status(400).json({ message: "Invalid or expired OTP" });
+            }
+    
+            // Update customer as verified
+            const updatedCustomer = await DeliveryBoy.findOneAndUpdate(
+                { mobile },
+                { otpVerified: true },
+                { new: true }
+            );
+    
+            if (!updatedCustomer) {
+                return res.status(404).json({ message: "Customer not found" });
+            }
+    
+            // Emit OTP verification success event
+            const io = req.app.get('socketio');
+            io.emit("otp-verified", { mobile, message: "OTP verified successfully" });
+    
+            return res.status(200).json({ message: "OTP verified successfully", customer: updatedCustomer });
+        } catch (error) {
+            return res.status(500).json({ message: error.message });
+        }
+    },
     // Create a new delivery boy
     createDeliveryBoy: async (req, res) => {
         try {
-            const { name, mobile_number, password, current_location } = req.body;
+            const { name, mobile, password, current_location } = req.body;
             const hashedPassword = await bcrypt.hash(password, 10);
 
             const deliveryBoy = await deliveryBoyServices.createDeliveryBoyService(
                 name, 
-                mobile_number, 
+                mobile, 
                 hashedPassword, 
                 current_location
             );
@@ -24,6 +86,41 @@ const deliveryBoyController = {
             res.status(400).json({ success: false, message: error.message });
         }
     },
+
+     updateDeliveryBoy : async (req, res) => {
+        try {
+            const { deliveryBoy_id } = req.params;
+            const { name, mobile, password, current_location } = req.body;
+    
+            // Fetch existing delivery boy
+            const deliveryBoy = await DeliveryBoy.findById(deliveryBoy_id);
+            if (!deliveryBoy) {
+                return res.status(404).json({ success: false, message: "Delivery Boy not found" });
+            }
+    
+            if (name) deliveryBoy.name = name;
+            if (mobile) deliveryBoy.mobile = mobile;
+            
+            if (password) {
+                const hashedPassword = await bcrypt.hash(password, 10);
+                deliveryBoy.password = hashedPassword;
+            }
+    
+            // Update current location if provided
+            if (current_location?.latitude && current_location?.longitude) {
+                deliveryBoy.current_location = {
+                    type: "Point",
+                    coordinates: [current_location.longitude, current_location.latitude],
+                };
+            }
+            await deliveryBoy.save();
+    
+            res.status(200).json({ success: true, message: "Profile updated successfully", data: deliveryBoy });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+    
 
     // Get all delivery boys
     getAllDeliveryBoys: async (req, res) => {
@@ -38,8 +135,8 @@ const deliveryBoyController = {
     // Get delivery boy by mobile number
     getDeliveryBoyByMobile: async (req, res) => {
         try {
-            const { mobile_number } = req.params;
-            const deliveryBoy = await deliveryBoyServices.findDeliveryBoyByMobileService(mobile_number);
+            const { mobile } = req.params;
+            const deliveryBoy = await deliveryBoyServices.findDeliveryBoyByMobileService(mobile);
             if (!deliveryBoy) {
                 return res.status(404).json({ success: false, message: "Delivery boy not found" });
             }
@@ -52,9 +149,9 @@ const deliveryBoyController = {
     // Login for Delivery Boy
     loginDeliveryBoy: async (req, res) => {
         try {
-            const { mobile_number, boy_id, password } = req.body;
+            const { mobile, boy_id, password } = req.body;
             const deliveryBoy = await DeliveryBoy.findOne({
-                $or: [{ mobile_number }, { _id: boy_id }]
+                $or: [{ mobile }, { _id: boy_id }]
             });
             if (!deliveryBoy || !(await bcrypt.compare(password, deliveryBoy.password))) {
                 return res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -86,7 +183,10 @@ const deliveryBoyController = {
     updateLocation: async (req, res) => {
         try {
             const { boy_id, latitude, longitude } = req.body;
-            await DeliveryBoy.findByIdAndUpdate(boy_id, { current_location: { latitude, longitude } });
+            await DeliveryBoy.findByIdAndUpdate(boy_id, { current_location: { latitude, longitude },
+              $push: { location_history: newLocation }}),
+            // $push: { location_history: newLocation }
+
             res.status(200).json({ success: true, message: "Location updated" });
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
