@@ -1,21 +1,37 @@
-const { INTEGER, STRING, DECIMAL } = require('sequelize');
-const sequelize = require('../util/database');
+// const { INTEGER, STRING, DECIMAL } = require('sequelize');
+// const sequelize = require('../util/database');
 
 
-const SubCategories = sequelize.define('subCategories', {
-    id: {
-        type: INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-    },
+// const SubCategories = sequelize.define('subCategories', {
+//     id: {
+//         type: INTEGER,
+//         primaryKey: true,
+//         autoIncrement: true,
+//     },
+//     name: {
+//         type: STRING,
+//         allowNull: false,
+//     },
+//     imageUrl: {
+//         type: STRING,
+//         allowNull: false,
+//     }
+// });
+
+// module.exports = SubCategories;
+const mongoose = require('mongoose');
+
+const subCategorySchema = new mongoose.Schema({
     name: {
-        type: STRING,
-        allowNull: false,
+        type: String,
+        required: true
     },
     imageUrl: {
-        type: STRING,
-        allowNull: false,
+        type: String,
+        required: true
     }
-});
+}, { timestamps: true });
 
-module.exports = SubCategories;
+const SubCategory = mongoose.model('SubCategory', subCategorySchema);
+
+module.exports = SubCategory;

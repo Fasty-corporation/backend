@@ -1,61 +1,56 @@
-const Cart = require('../models/cart')
-const ProductType = require('../models/productType')
-const UserDetails = require('../models/userDetails')
+const UserDetails = require('../models/userDetails');
+const Cart = require('../models/cart');
+const ProductType = require('../models/productType');
 
 const userServices = {
-
+    // Create user service
     createUserService: async (name, email, password) => {
         try {
-            const createdUser = await UserDetails.create({ name, email, password })
-            return createdUser
+            const createdUser = await UserDetails.create({ name, email, password });
+            return createdUser;
         } catch (error) {
-            throw error
+            throw error;
         }
     },
-    // get users service to find all the users from db
+
+    // Get all users from MongoDB
     getUsersService: async () => {
         try {
-            const dbRes = await UserDetails.findAll()
-            return dbRes
-
+            const dbRes = await UserDetails.find({});
+            return dbRes;
         } catch (error) {
-            throw error
+            throw error;
         }
     },
-    // find user email to find specific user by their email id
+
+    // Find user by email
     findUserByEmailService: async (email) => {
         try {
-            const dbRes = await UserDetails.findOne({ where: { email: email } })
-            return dbRes
+            const dbRes = await UserDetails.findOne({ email });
+            return dbRes;
         } catch (error) {
-            throw error
+            throw error;
         }
     },
 
-    // find user service to find the user from database 
+    // Find user with cart and product type details
     findUserService: async (email) => {
         try {
-            const dbRes = await UserDetails.findOne({
-                where: { email: email },
-                include: [
-                    {
-                        model: Cart, attributes: ["id", "quantity", "productTypeId"],
-                        include: [
-                            { model: ProductType, attributes: ['price'] }
-                        ]
-                    },
+            const dbRes = await UserDetails.findOne({ email })
+                // .populate({
+                //     // path: "cart",
+                //     select: "id quantity productType",
+                //     populate: {
+                //         path: "productType",
+                //         select: "price",
+                //     },
+                // });
 
-
-                ]
-            })
-            return dbRes
-
+            return dbRes;
         } catch (error) {
-            throw error
+            throw error;
         }
     }
+};
 
-}
-
-
-module.exports = userServices
+module.exports = userServices;

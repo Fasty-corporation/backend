@@ -84,6 +84,7 @@ const offerServices = {
             return dbRes
 
         } catch (error) {
+            console.log(error.message)
             throw error
         }
     },
