@@ -12,34 +12,30 @@ const sendOtp = async (req, res) => {
             return res.status(400).json({ message: "Mobile number is required" });
         }
 
-        // Validate mobile number (10 digits, starts with 6-9)
-        // const mobileRegex = /^[6-9]\d{9}$/;
-        // if (!mobileRegex.test(mobile)) {
-        //     return res.status(400).json({ message: "Invalid mobile number. It must be a 10-digit number starting with 6-9." });
-        // }
-
-        // Check if the customer already exists with this mobile number
+        // Check if the customer already exists
         let customer = await Customer.findOne({ mobile });
 
-        if (customer) {
-            return res.status(400).json({ message: "Mobile number already registered. Please log in instead." });
+        if (!customer) {
+            // New user: Create a new entry (Unverified user)
+            customer = new Customer({ mobile });
+            await customer.save();
+            var message = "OTP sent for registration";
+        } else {
+            var message = "OTP sent for login";
         }
 
-        // Create a new customer entry (unverified)
-        customer = new Customer({ mobile });
-        await customer.save();
-
-        // Generate and send OTP
+        // Generate & send OTP
         const otp = await otpService.generateOTP(mobile);
         await otpService.sendOTP(mobile, otp);
 
-        // Emit OTP sent event
+        // Emit event for frontend
         const io = req.app.get('socketio');
-        io.emit("otp-sent", { mobile, message: "OTP sent successfully" });
+        io.emit("otp-sent", { mobile, message });
 
-        return res.status(200).json({ message: "OTP sent successfully", mobile });
+        return res.status(200).json({ message, mobile });
 
     } catch (error) {
+        console.error(error);
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
@@ -52,94 +48,26 @@ const verifyOtp = async (req, res) => {
             return res.status(400).json({ message: "Mobile number and OTP are required" });
         }
 
-        const existingCustomer = await Customer.findOne({ mobile });
-        if (!existingCustomer) {
-            return res.status(400).json({ message: "Mobile number is not registered. Try a new mobile number." });
-        }
+        // Find the customer first
+        let customer = await Customer.findOne({ mobile });
 
-
-        const isOtpValid = otpService.verifyOTP(mobile, otp);
-        if (!isOtpValid) {
-            return res.status(400).json({ message: "Invalid or expired OTP" });
-        }
-
-        // Update customer as verified
-        const updatedCustomer = await Customer.findOneAndUpdate(
-            { mobile },
-            { otpVerified: true },
-            { new: true }
-        );
-
-        if (!updatedCustomer) {
-            return res.status(404).json({ message: "Customer not found" });
-        }
-
-        // Emit OTP verification success event
-        const io = req.app.get('socketio');
-        io.emit("otp-verified", { mobile, message: "OTP verified successfully" });
-
-        return res.status(200).json({ message: "OTP verified successfully", customer: updatedCustomer });
-    } catch (error) {
-        return res.status(500).json({ message: error.message });
-    }
-};
-
-
-const loginCustomer = async (req, res) => {
-    try {
-        const { mobile } = req.body;
-        if (!mobile) {
-            return res.status(400).json({ message: "Mobile number is required" });
-        }
-
-        const customer = await otpService.getCustomerByMobileService(mobile);
         if (!customer) {
-            return res.status(404).json({ message: "Customer not found" });
+            return res.status(404).json({ message: "Customer not found. Please register first." });
         }
 
-        const otp = otpService.generateOTP(mobile);
-        await otpService.sendOTP(mobile, otp);
+        // Validate OTP
+        const isValidOtp = await otpService.verifyOTP(mobile, otp);
+        if (!isValidOtp) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
 
-    const io = req.app.post('socketio')
-        io.emit("otp-sent", { mobile, message: "OTP sent for login" });
+        // Generate JWT token
+        const token = jwt.sign({ id: customer.id, mobile: customer.mobile }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-        return res.status(200).json({ message: "OTP sent to mobile number" });
+        return res.status(200).json({ message: "OTP verified successfully", token, customer });
+
     } catch (error) {
-        return res.status(500).json({ message: error.message });
-    }
-};
-
-// Verify Login OTP
-const verifyLoginOTP = async (req, res) => {
-    try {
-        const { mobile, otp } = req.body;
-        if (!mobile || !otp) {
-            return res.status(400).json({ message: "Mobile number and OTP are required" });
-        }
-
-        const isOtpValid = otpService.verifyOTP(mobile, otp);
-        if (!isOtpValid) {
-            return res.status(400).json({ message: "Invalid or expired OTP" });
-        }
-
-        const customer = await otpService.getCustomerByMobileService(mobile);
-        if (!customer) {
-            return res.status(404).json({ message: "Customer not found" });
-        }
-
-        const token = jwt.sign(
-            { customerId: customer._id, name: customer.name },
-            process.env.JWT_SECRET || "your_secret_key",
-            { expiresIn: "1h" }
-        );
-
-        // Emit login success event
-        const io = req.app.get('socketio')
-        io.emit("customer-logged-in", { mobile, name: customer.name });
-
-        return res.status(200).json({ token, customer });
-    } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
 
@@ -167,7 +95,5 @@ const updateCustomer = async (req, res) => {
 module.exports = { 
     sendOtp, 
     verifyOtp, 
-    loginCustomer, 
-    verifyLoginOTP, 
     updateCustomer
 };
