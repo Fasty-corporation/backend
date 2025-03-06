@@ -5,7 +5,8 @@ const {
     findShopInventoryService,
     updateInventoryService,
     deleteInventoryService,
-    createInventory
+    createInventory,
+    verifyInventoryService
 } = require("../../services/inventoryServices");
 const Inventory = require('../../models/inventory');
 
@@ -53,6 +54,44 @@ const inventoryController = {
             console.error("Error creating inventory:", error.message);
             return res.status(500).json({ message: "Error while creating inventory", error: error.message });
         }
+    },
+     getAllInventory: async (req, res) => {
+            try {
+                const inventoryList = await findShopInventoryService();
+    
+                if (!inventoryList || inventoryList.length === 0) {
+                    return res.status(404).json({ message: "No inventory records found" });
+                }
+    
+                return res.status(200).json({
+                    message: "Inventory retrieved successfully",
+                    data: inventoryList,
+                });
+    
+            } catch (error) {
+                console.error("Error fetching inventory:", error.message);
+                return res.status(500).json({ message: "Error while fetching inventory", error: error.message });
+            }
+        },
+     verifyInventory : async (req, res) => {
+            try {
+                const { inventoryId } = req.params;
+        
+                if (!mongoose.isValidObjectId(inventoryId)) {
+                    return res.status(400).json({ message: "Invalid inventory ID format" });
+                }
+        
+                const updatedInventory = await verifyInventoryService(inventoryId);
+        
+                if (!updatedInventory) {
+                    return res.status(404).json({ message: "Inventory not found or already verified" });
+                }
+        
+                return res.status(200).json({ message: "Inventory verified successfully", data: updatedInventory });
+            } catch (error) {
+                console.error("Error verifying inventory:", error.message);
+                return res.status(500).json({ message: "Error while verifying inventory", error: error.message });
+            }
     },
     // Get Inventory by ID
     getInventoryDetails: async (req, res) => {

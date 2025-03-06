@@ -8,7 +8,7 @@ const { getOffers } = require('../controllers/user/userOfferController')
 const { createOrder, updateOrderCompleted, updateOrderFailed, getOrders, getOrderDetailsByOrderId } = require('../controllers/user/orderController')
 const { getSearchProduct } = require('../controllers/user/searchController')
 const authMiddleware = require("../middlewares/user/authMiddleware")
-const { createCustomer, getCustomerById, updateCustomer, deleteCustomer, loginCustomer, verifyLoginOTP, registerCustomer, sendOtp,verifyOtp } = require("../controllers/user/customerController")
+const { createCustomer, getCustomerById, updateCustomer, deleteCustomer, loginCustomer, verifyLoginOTP, registerCustomer, sendOtp,verifyOtp } = require("../controllers/user/customersController")
 // const { verifyOtp } = require("../controllers/user/shopController")
 const { sendOTP } = require("../services/otpService")
 
@@ -51,15 +51,20 @@ router.get('/search/getproducts', getSearchProduct)
 
 //customer
 // Create a new customer
-router.post("/customers",createCustomer);
-router.post("/send-otp", sendOtp);          // Step 1: Send OTP
-router.post("/verify-otp", verifyOtp);
-router.post("/customers/login",loginCustomer);
-router.post("/customers/verifylogin",verifyLoginOTP)
-router.post("/verifyotp",verifyOtp)
-router.get("/customers/:customer_id",getCustomerById);
-router.put("/customers/:customer_id",updateCustomer);
-router.delete("/customers/:customer_id", deleteCustomer);
+// router.post("/customers",createCustomer);
+// router.post("/send-otp", sendOtp);          // Step 1: Send OTP
+// router.post("/verify-otp", verifyOtp);
+// router.post("/customers/login",loginCustomer);
+// router.post("/customers/verifylogin",verifyLoginOTP)
+// router.post("/verifyotp",verifyOtp)
+// router.get("/customers/:customer_id",getCustomerById);
+// router.put("/customers/:customer_id",updateCustomer);
+// router.delete("/customers/:customer_id", deleteCustomer);
+
+//signup and login
+router.post("/send-otp", sendOtp)
+router.post("/verify-otp",verifyOtp)
+router.put("/update/:customer_id",updateCustomer)
 
 module.exports = router;
 

@@ -21,6 +21,18 @@ const inventoryServices = {
                 throw new Error(`Error creating inventory: ${error.message}`);
             }
         },
+         verifyInventoryService : async (inventoryId) => {
+            try {
+                const updatedInventory = await Inventory.findByIdAndUpdate(
+                    inventoryId,
+                    { verified: true },
+                    { new: true }
+                );
+                return updatedInventory;
+            } catch (error) {
+                throw new Error("Error while verifying inventory");
+            }
+        },
     // Get inventory details by ID
     getInventoryDetailsService: async (id) => {
         try {
