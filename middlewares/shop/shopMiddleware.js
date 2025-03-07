@@ -67,10 +67,7 @@ const isAuthenticatedShopOwner = async (req, res, next) => {
     }
 };
 
-// module.exports = isAuthenticatedShopOwner;
 
-
-// module.exports = isAuthenticated;
 
 
 module.exports = {isShopOwner,isAuthenticatedShopOwner};
