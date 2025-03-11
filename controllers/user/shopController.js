@@ -144,7 +144,8 @@ const shopController = {
                     model: "Inventory",
                     populate: {
                         path: "product_id category sub_category",
-                        select: "name"
+                        select: "name",
+                        select:"imageUrl"
                     }
                 })
                 .select("-__v");

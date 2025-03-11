@@ -1,12 +1,12 @@
-const twilio = require("twilio");
+const { Vonage } = require('@vonage/server-sdk');
 const Customer = require("../models/customersModel");
 const otpStore = new Map(); // Temporary storage for OTPs
 
-// Twilio configuration
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-const client = new twilio(accountSid, authToken);
+// Vonage Configuration
+const vonage = new Vonage({
+    apiKey: process.env.VONAGE_API_KEY || "67ae8e21" , 
+    apiSecret: process.env.VONAGE_API_SECRET || "i5vmyWuVzdnYuct6"
+});
 
 const otpService = {
     // Generate a 6-digit OTP and store it with a 2-hour expiry
@@ -19,17 +19,19 @@ const otpService = {
         return otp;
     },
 
-    // Send OTP using Twilio
+    // Send OTP using Vonage SMS API
     sendOTP: async (mobile, otp) => {
         try {
-            await client.messages.create({
-                body: `Your OTP code is: ${otp}. It will expire in 2 hours.`,
-                from: twilioPhoneNumber,
-                to: mobile
-            });
+            const from = "Vonage"; // Sender name
+            const to = mobile;
+            const text = `Your OTP code is: ${otp}. It will expire in 2 hours.`;
+
+            const response = await vonage.sms.send({ to, from, text });
+
+            console.log("Vonage Response:", response);
             return true;
         } catch (error) {
-            console.error("Error sending OTP via Twilio:", error);
+            console.error("Error sending OTP via Vonage:", error);
             return false;
         }
     },
@@ -59,25 +61,14 @@ const otpService = {
         return false;
     },
 
-    // Get shop by mobile (Modify this based on your database)
-    getShopByMobile: async (mobile) => {
-        return await Shop.findOne({ where: { mobile } }); // Replace 'Shop' with your actual model
-    },
-
+    // Get customer by mobile
     getCustomerByMobileService: async (mobile) => {
         try {
-            return await Customer.findOne({ mobile }); // Find shop by mobile
+            return await Customer.findOne({ where: { mobile } });
         } catch (error) {
             throw new Error('Database error: ' + error.message);
         }
-    },
-    getCustomerByMobileService: async (mobile) => {
-        try {
-            return await Customer.findOne({ mobile }); // Find shop by mobile
-        } catch (error) {
-            throw new Error('Database error: ' + error.message);
-        }
-    },
+    }
 };
 
 module.exports = otpService;
