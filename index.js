@@ -54,9 +54,9 @@ app.use(bodyParser.json());
 app.use("/admin", adminRoutes);
 app.use("/user", userRoutes);
 app.use("/shop", shopRoutes);
-app.use("/customers",customersRoutes)
+// app.use("/customers",customersRoutes)
 app.use("/delivery",deliveryBoyRoutes)
-// app.use("/api/deliveryBoy",deliveryBoy)
+
 // Root route
 app.get("/", (req, res) => {
   res.send("Hello World!");

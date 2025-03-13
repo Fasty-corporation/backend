@@ -37,7 +37,10 @@ const userCategoryServices = {
             throw error;
         }
     },
-
+     getCategoryById : async (id) => {
+        return await MainCategories.findById(id);
+    },
+    
     // Create a new main category
     createCategoryService: async (name, imageUrl) => {
         try {
@@ -49,17 +52,20 @@ const userCategoryServices = {
     },
 
     // Update an existing main category
-    updateCategoryService: async (id, name, imageUrl) => {
+     updateCategoryService : async (id, name, imageUrl) => {
         try {
-            const updatedCategory = await MainCategories.update(
-                { name, imageUrl },
-                { where: { id } }
+            const updatedCategory = await MainCategories.findByIdAndUpdate(
+                id, // Find by category ID
+                { name, imageUrl }, // Update fields
+                { new: true, runValidators: true } // Return updated document
             );
+            
             return updatedCategory;
         } catch (error) {
             throw error;
         }
     },
+    
 
     // Delete a main category
     deleteCategoryService: async (id) => {
@@ -82,11 +88,12 @@ const userCategoryServices = {
     },
 
     // Update an existing subcategory
-    updateSubCategoryService: async (id, name, imageUrl, mainCategoryId) => {
+     updateSubCategoryService: async (id, name, imageUrl, categoryId) => {
         try {
-            const updatedSubCategory = await SubCategories.update(
-                { name, imageUrl, mainCategoryId },
-                { where: { id } }
+            const updatedSubCategory = await SubCategories.findByIdAndUpdate(
+                id,
+                { name, imageUrl, categoryId },
+                { new: true } // Return updated document
             );
             return updatedSubCategory;
         } catch (error) {

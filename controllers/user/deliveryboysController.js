@@ -7,7 +7,7 @@ const DeliveryBoy = require("../../models/deliveryboysModel.js");
 const otpService = require("../../services/otpService");
 // signup boy
 const deliveryBoyController = {
-     sendOtp : async (req, res) => {
+    sendOtp: async (req, res) => {
         try {
             const { mobile } = req.body;
     
@@ -20,7 +20,11 @@ const deliveryBoyController = {
     
             if (!customer) {
                 // New user: Create a new entry (Unverified user)
-                customer = new DeliveryBoy({ mobile });
+                customer = new DeliveryBoy({
+                    mobile,
+                    current_location: { type: "Point", coordinates: [0, 0] }, // ✅ Default location
+                    location_history: [] // ✅ Empty array to prevent schema errors
+                });
                 await customer.save();
                 var message = "OTP sent for registration";
             } else {
@@ -32,7 +36,7 @@ const deliveryBoyController = {
             await otpService.sendOTP(mobile, otp);
     
             // Emit event for frontend
-            const io = req.app.get('socketio');
+            const io = req.app.get("socketio");
             io.emit("otp-sent", { mobile, message });
     
             return res.status(200).json({ message, mobile });
@@ -41,7 +45,8 @@ const deliveryBoyController = {
             console.error(error);
             return res.status(500).json({ message: "Internal Server Error", error: error.message });
         }
-    },
+    }
+,    
     
      verifyOtp : async (req, res) => {
         try {
@@ -77,7 +82,7 @@ const deliveryBoyController = {
  updateDeliveryBoy : async (req, res) => {
     try {
         const { boy_id } = req.params;
-        const { name, mobile, password, location_history } = req.body;
+        const { name, mobile, password, current_location, location_history } = req.body;
 
         if (!boy_id) {
             return res.status(400).json({ message: "Delivery boy ID is required" });
@@ -91,6 +96,7 @@ const deliveryBoyController = {
 
         // Update fields if provided
         if (name) deliveryBoy.name = name;
+        
         if (mobile) {
             // Validate mobile number format (10-15 digits)
             const mobileRegex = /^\d{10,15}$/;
@@ -106,9 +112,27 @@ const deliveryBoyController = {
 
             deliveryBoy.mobile = mobile;
         }
+
         if (password) deliveryBoy.password = password;
+
+        // ✅ Update Current Location
+        if (current_location) {
+            if (
+                !current_location.coordinates ||
+                !Array.isArray(current_location.coordinates) ||
+                current_location.coordinates.length !== 2
+            ) {
+                return res.status(400).json({ message: "Invalid current_location format. Provide [longitude, latitude]." });
+            }
+
+            deliveryBoy.current_location = {
+                type: "Point",
+                coordinates: current_location.coordinates
+            };
+        }
+
+        // ✅ Append New Location History
         if (location_history) {
-            // Validate location history
             if (!Array.isArray(location_history) || !location_history.length) {
                 return res.status(400).json({ message: "Invalid location history data" });
             }
@@ -124,6 +148,9 @@ const deliveryBoyController = {
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 }
+
+// module.exports = { updateDeliveryBoy };
+
 }
 
 module.exports = deliveryBoyController;

@@ -28,23 +28,23 @@ const customerSchema = new mongoose.Schema({
         unique: true,
         sparse: false // Null value ki duplicate error avoid karne ke liye
     },
-    // location: {
-    //     type: {
-    //         type: String,
-    //         enum: ["Point"],
-    //         default: "Point",
-    //         required: false
-    //     },
-    //     coordinates: {
-    //         type: [Number], // [longitude, latitude]
-    //         default: undefined,
-    //         required:false // Allows saving null if the user has no location
-    //     },
-    //     address: {
-    //         type: String,
-    //         default: "" // Allows the user to enter a manual address
-    //     }
-    // }
+    location: {
+        type: {
+            type: String,
+            enum: ["Point"],
+            default: "Point",
+            required: false
+        },
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            default: undefined,
+            required:false // Allows saving null if the user has no location
+        },
+        address: {
+            type: String,
+            default: "" // Allows the user to enter a manual address
+        }
+    }
 }, { timestamps: true });
 
 customerSchema.index({ location: "2dsphere" }); // Enables geospatial queries

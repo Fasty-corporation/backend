@@ -1,10 +1,6 @@
 const mongoose = require('mongoose');
 
 const shopSchema = new mongoose.Schema({
-    shop_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        auto: true,
-    },
     name: {
         type: String,
         required: true,
@@ -15,6 +11,7 @@ const shopSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: "Inventory" }],
     address: {
         city: {
             type: String,
@@ -47,18 +44,18 @@ const shopSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    location: {
-        type: {
-            type: String,
-            enum: ['Point'],
-            required: true,
-            default: 'Point'
-        },
-        coordinates: {
-            type: [Number], 
-            required: true
-        }
-    },
+    // location: {
+    //     type: {
+    //         type: String,
+    //         enum: ['Point'],
+    //         required: true,
+    //         default: 'Point'
+    //     },
+    //     coordinates: {
+    //         type: [Number], 
+    //         required: true
+    //     }
+    // },
     verify: {
         otp: {
             type: String,
@@ -73,33 +70,35 @@ const shopSchema = new mongoose.Schema({
         account_details: {
             bank: {
                 type: String,
-                required: true,
+                required: false,
                 trim: true
             },
             ifsc: {
                 type: String,
-                required: true,
+                required: false,
                 trim: true
             },
             ac_number: {
                 type: String,
-                required: true,
+                required: false,
                 trim: true
             }
         },
         pan: {
             type: String,
-            required: true,
+            required: false,
             unique: true,
             trim: true
         },
         aadhaar: {
             type: String,
-            required: true,
+            required: false,
             unique: true,
             trim: true
         }
-    }
+    },
+    // owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // Reference to User
+    // inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: "Inventory" }]
 }, { timestamps: true });
 
 shopSchema.index({ location: '2dsphere' });

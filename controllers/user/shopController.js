@@ -3,13 +3,16 @@ const jwt = require("jsonwebtoken");
 const otpService = require("../../services/otpService");
 const bcrypt = require("bcrypt");
 const Shop = require("../../models/shops");
-
+const Inventory = require("../../models/inventory");
+const mongoose = require("mongoose");
+// const Shop = require("../models/Shop");
+// const Inventory = require("../../models/Inventory");
 const shopController = {
     // Create a new shop with OTP verification
     createShop: async (req, res) => {
         try {
-            const { name, location, mobile, owner_name, address, gst } = req.body;
-            if (!name || !location  || !mobile || !owner_name || !address || !gst) {
+            const { name, mobile, owner_name, address, gst,inventory } = req.body;
+            if (!name   || !mobile || !owner_name || !address || !gst) {
                 return res.status(400).json({ message: 'All fields are required' });
             }
             
@@ -30,9 +33,10 @@ const shopController = {
                 owner_name,
                 address,
                 gst,
+                inventory,
                 // password: hashedPassword,
                 mobile,
-                location,
+                // location,
                 verify: { otp, verified: false }
             });
             await newShop.save();
@@ -120,16 +124,74 @@ const shopController = {
         }
     },
 
+    // getAllShops: async (req, res) => {
+    //     try {
+    //         const shops = await Shop.find();
+    //         req.app.get('socketio').emit("shop:getAll", { message: "All shops retrieved" });
+    //         return res.status(200).json(shops);
+    //     } catch (error) {
+    //         return res.status(500).json({ message: error.message });
+    //     }
+    // },
+  
+    
+
     getAllShops: async (req, res) => {
         try {
-            const shops = await Shop.find();
-            req.app.get('socketio').emit("shop:getAll", { message: "All shops retrieved" });
-            return res.status(200).json(shops);
+            const shops = await Shop.find()
+                .populate({
+                    path: "inventory",
+                    model: "Inventory",
+                    populate: {
+                        path: "product_id category sub_category",
+                        select: "name",
+                        select:"imageUrl"
+                    }
+                })
+                .select("-__v");
+    
+            if (!shops.length) {
+                return res.status(404).json({
+                    success: false,
+                    message: "No shops found"
+                });
+            }
+    
+            // ✅ Add inventory count for each shop
+            const shopsWithInventoryCount = shops.map(shop => ({
+                ...shop.toObject(),
+                inventoryCount: shop.inventory ? shop.inventory.length : 0
+            }));
+    
+            return res.status(200).json({
+                success: true,
+                message: "Shops with inventory retrieved successfully",
+                shops: shopsWithInventoryCount
+            });
         } catch (error) {
-            return res.status(500).json({ message: error.message });
+            console.error("Error fetching shops:", error.message);
+            return res.status(500).json({
+                success: false,
+                message: "Error while fetching shops",
+                error: error.message
+            });
         }
-    },
+    },    
 
+    // getAllShops: async (req, res) => {
+    //     try {
+    //         const shops = await Shop.find();
+            
+    //         const shopsWithInventory = await Promise.all(shops.map(async (shop) => {
+    //             const inventories = await Inventory.find({ shopId: shop._id });
+    //             return { ...shop.toObject(), inventories };
+    //         }));
+    
+    //         return res.status(200).json(shopsWithInventory);
+    //     } catch (error) {
+    //         return res.status(500).json({ message: error.message });
+    //     }
+    // },  
     getShopById: async (req, res) => {
         try {
             const { shopId } = req.params;

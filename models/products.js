@@ -31,7 +31,7 @@ const productSchema = new mongoose.Schema({
         required: true
     },
     imageUrls: {
-        type: [String], // Sequelize's JSON is mapped to an array of strings for images
+        type: String, // Sequelize's JSON is mapped to an array of strings for images
         required: true
     },
     description: {

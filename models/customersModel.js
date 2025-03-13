@@ -31,7 +31,7 @@ const customerSchema = new mongoose.Schema({
        address:{
         type:String,
         required:false
-       }
+       },
 }, { timestamps: true });
 
 // customerSchema.index({ location: "2dsphere" }); // Enables geospatial queries

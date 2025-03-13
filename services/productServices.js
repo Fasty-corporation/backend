@@ -24,20 +24,17 @@ const productServices = {
     },
 
     // get all product service to get all the products
-    getAllProductsService: async () => {
+     getAllProductsService : async () => {
         try {
-            const dbRes = await Product.findAll({
-                include: [
-                    { model: MainCategories },
-                    { model: SubCategories }
-                ]
-            })
-            return dbRes
+            // Fetch all products from the database
+            const products = await Product.find();
+    
+            return products;
         } catch (error) {
-            throw error
+            console.error("Error fetching products in service:", error);
+            throw new Error("Error while fetching products");
         }
     },
-
     // for creating a product type 
     createProductTypeService: async (type, price, productId) => {
         try {
