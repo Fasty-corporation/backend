@@ -36,5 +36,5 @@ const customerSchema = new mongoose.Schema({
 
 // customerSchema.index({ location: "2dsphere" }); // Enables geospatial queries
 
-const Customer = mongoose.model("UserCustomers", customerSchema);
-module.exports = Customer;
+module.exports= mongoose.model("UserCustomers", customerSchema);
+// module.exports = Customer;

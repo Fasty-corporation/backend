@@ -71,14 +71,19 @@ const productServices = {
     },
 
     // get product price service to get the product type price 
-    getProductPriceService: async (productTypeId) => {
+     getProductPriceService : async (productTypeId) => {
         try {
-            const db = await ProductType.findOne({ where: { id: productTypeId }, attributes: ["price"] })
-            return db
+            const product = await ProductType.findOne(
+                { _id: productTypeId },  // MongoDB uses `_id` instead of `id`
+                { price: 1 }  // Projection: Only return `price`
+            );
+    
+            return product;  // Returns `{ _id, price }` or `null`
         } catch (error) {
-            throw error
+            throw error;
         }
     },
+    
 
     // product details service to fetch particular product details 
     getProductDetailsService: async (id) => {

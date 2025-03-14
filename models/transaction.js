@@ -44,7 +44,8 @@ const transactionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        default: 'pending'
+        enum: ["Pending", "Completed", "Failed"],
+        default: "Pending",
     },
     amount: {
         type: String, // If amount should support decimals, use Number instead
@@ -53,7 +54,17 @@ const transactionSchema = new mongoose.Schema({
     userEmail: {
         type: String,
         required: true
-    }
+    },
+    orderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Order",
+        required: true,
+    },
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "UserCustomers",
+        required: true,
+    },
 }, { timestamps: true });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);

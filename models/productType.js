@@ -23,6 +23,11 @@
 const mongoose = require('mongoose');
 
 const productTypeSchema = new mongoose.Schema({
+    productId:{
+         type: mongoose.Schema.Types.ObjectId, // MongoDB auto-generates `_id`
+         ref: "Product",
+         required:false
+    },
     type: {
         type: String,
         required: true

@@ -82,14 +82,16 @@ const productController = {
 
             const sendRes = {
                 id: dbRes.id,
-                productName: findProduct.name,
-                productId: findProduct.id,
+                // productName: findProduct.name,
+                // productId: findProduct.id,
                 type: type,
                 price: price
             };
 
             return res.send(sendRes);
         } catch (error) {
+            console.log(error.message)
+            console.log(error)
             res.status(500).send({ message: 'Error while creating product type' });
         }
     },
