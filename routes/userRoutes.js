@@ -42,7 +42,7 @@ router.get('/getoffers', authMiddleware, getOffers)
 
 // order routes 
 router.post('/order/createorder', authMiddleware, createOrder,)
-router.post('/order/ordercompleted', authMiddleware, updateOrderCompleted)
+router.put('/order/ordercompleted', authMiddleware, updateOrderCompleted)
 router.post('/order/orderfailed', authMiddleware, updateOrderFailed)
 router.get('/order/getorders', getOrders)
 router.get('/order/getorderdetails', authMiddleware, getOrderDetailsByOrderId)

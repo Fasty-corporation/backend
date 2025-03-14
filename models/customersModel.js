@@ -32,6 +32,10 @@ const customerSchema = new mongoose.Schema({
         type:String,
         required:false
        },
+       productId : {
+        type:mongoose.Schema.Types.ObjectId,
+        ref : "Product"
+       }
 }, { timestamps: true });
 
 // customerSchema.index({ location: "2dsphere" }); // Enables geospatial queries

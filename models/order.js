@@ -59,7 +59,9 @@ const orderSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now,
-    }
+    },
+    cartItems: [{ productId: mongoose.Schema.Types.ObjectId, quantity: Number }],
+
 });
 
 module.exports = mongoose.model("Order", orderSchema);

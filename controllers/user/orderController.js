@@ -19,7 +19,8 @@ const Inventory = require("../../models/inventory.js");
 const orderController = {
     
     // const Razorpay = require("razorpay");
-     createOrder :  async (req, res) => {
+
+    createOrder: async (req, res) => {
         const session = await mongoose.startSession();
         session.startTransaction();
     
@@ -27,7 +28,6 @@ const orderController = {
             const { email, id: userId } = req.user || {};
             const { payment_method, customer_location } = req.body || {};
     
-            // 🛑 Basic validation
             if (!userId || !email) {
                 return res.status(400).json({ message: "User authentication details missing" });
             }
@@ -35,17 +35,8 @@ const orderController = {
                 return res.status(400).json({ message: "Customer location is required" });
             }
     
-            // ✅ Fetch cart items
-            const cartProducts = await Cart.find({ userId })
-            .populate({
-                path: "productId",
-                select: "name price imageUrl"  // Only get these fields
-            })
-            .session(session);
-        
-            
-            console.log("Cart Products:", cartProducts);
-                        console.log("Cart Data:", cartProducts);
+            // Get cart items for the user
+            const cartProducts = await Cart.find({ userId }).populate("productId");
     
             if (!cartProducts.length) {
                 return res.status(400).json({ message: "Cart is empty" });
@@ -57,25 +48,30 @@ const orderController = {
             for (const cartItem of cartProducts) {
                 const product = cartItem.productId;
     
+                // Handle missing product references
                 if (!product || !product._id) {
                     unavailableProducts.push(`Product ID ${cartItem.productId} is no longer available.`);
                     continue;
                 }
     
-                // ✅ Check inventory stock
+                console.log("Checking inventory for:", product._id, "Quantity:", cartItem.quantity);
+    
+                // Check product inventory
                 const availableInventory = await Inventory.findOne({
                     product_id: product._id,
                     stock: { $gte: cartItem.quantity }
                 }).session(session);
+    
+                console.log("Available inventory:", availableInventory);
     
                 if (!availableInventory) {
                     unavailableProducts.push(`Product ${product.name} is out of stock.`);
                     continue;
                 }
     
-                const totalPrice = cartItem.quantity * availableInventory.price + 5; // Including delivery charge
+                let totalPrice = cartItem.quantity * availableInventory.price + 5; // Including delivery charge
     
-                const orderData = {
+                let orderData = {
                     totalPrice,
                     paidAmount: payment_method === "COD" ? 0 : totalPrice,
                     dueAmount: payment_method === "COD" ? totalPrice : 0,
@@ -85,7 +81,7 @@ const orderController = {
                     status: "Pending"
                 };
     
-                // ✅ Razorpay Payment Handling (if payment method is not COD)
+                // Handle Razorpay payment for online orders
                 if (payment_method !== "COD") {
                     try {
                         const rzp = new Razorpay({
@@ -98,40 +94,38 @@ const orderController = {
                             currency: "INR"
                         });
     
-                        await Transaction.create([
-                            {
-                                transactionId: razorpayOrder.id,
-                                amount: totalPrice,
-                                email
-                            }
-                        ], { session });
+                        await Transaction.create([{
+                            transactionId: razorpayOrder.id,
+                            amount: totalPrice,
+                            email
+                        }], { session });
     
                         orderData.paymentId = razorpayOrder.id;
-    
-                    } catch (error) {
-                        console.error("❌ Razorpay Payment Failed:", error);
+                    } catch (rzpError) {
+                        console.error("❌ Razorpay Order Creation Failed:", rzpError);
                         throw new Error("Payment processing failed");
                     }
                 }
     
-                // ✅ Create Order
+                // Create order in database
                 const createdOrder = await Order.create([orderData], { session });
     
                 if (!createdOrder.length) {
                     throw new Error("Order creation failed");
                 }
     
-                // ✅ Insert Order Item
-                await OrderItem.create([
-                    {
+                // Insert order items
+                await OrderItem.insertMany(
+                    [{
                         orderDetails: JSON.stringify(product),
                         userId,
                         orderId: createdOrder[0]._id,
                         quantity: cartItem.quantity
-                    }
-                ], { session });
+                    }],
+                    { session }
+                );
     
-                // ✅ Update Inventory Stock
+                // Update inventory stock
                 await Inventory.updateOne(
                     { _id: availableInventory._id },
                     { $inc: { stock: -cartItem.quantity } },
@@ -141,39 +135,32 @@ const orderController = {
                 orders.push(createdOrder[0]);
             }
     
+            // If no orders were created, return error
             if (orders.length === 0) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.status(400).json({
-                    message: "Some items in your cart are no longer available",
-                    unavailableProducts
-                });
+                return res.status(400).json({ message: "Some items in your cart are no longer available.", unavailableProducts });
             }
     
-            // ✅ Clear Cart after order placement
+            // Remove items from the cart after successful order placement
             await Cart.deleteMany({ userId }).session(session);
     
-            // ✅ Commit Transaction
+            // Commit transaction
             await session.commitTransaction();
             session.endSession();
     
-            return res.status(201).json({
-                message: "Orders placed successfully",
-                orders
-            });
+            return res.status(201).json({ message: "Orders placed successfully", orders });
     
         } catch (error) {
             console.error("❌ Order Creation Error:", error.message);
             await session.abortTransaction();
             session.endSession();
-            return res.status(500).json({
-                message: "Internal server error",
-                error: error.message
-            });
+            return res.status(500).json({ message: "Internal server error", error: error.message });
         }
     },
     
-        // module.exports = { createOrder };
+    
+    // module.exports = { createOrder };
     
     // createOrder : async (req, res) => {
     //     const { email, id } = req.user;
