@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const {
-    createInventoryService,
+    
     getInventoryDetailsService,
     findShopInventoryService,
     updateInventoryService,
@@ -9,7 +9,7 @@ const {
     verifyInventoryService
 } = require("../../services/inventoryServices");
 const Inventory = require('../../models/inventory');
-
+//
 const inventoryController = {
     // Create Inventory
     createInventory: async (req, res) => {
