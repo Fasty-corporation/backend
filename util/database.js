@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+//
 const connectDatabase = () => {
   const dbURI = "mongodb+srv://adityadhopte16:bPZ39Sf6pfmaKzFJ@cluster0.bq1nb.mongodb.net/fasty";
   // console.log("Connecting to database:", dbURI);
