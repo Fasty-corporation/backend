@@ -11,6 +11,7 @@ const authMiddleware = require("../middlewares/user/authMiddleware")
 const { createCustomer, getCustomerById, updateCustomer, deleteCustomer, loginCustomer, verifyLoginOTP, registerCustomer, sendOtp,verifyOtp } = require("../controllers/user/customersController")
 // const { verifyOtp } = require("../controllers/user/shopController")
 const { sendOTP } = require("../services/otpService")
+const customerAuthMiddleware = require("../middlewares/user/authMiddleware")
 
 const router = express.Router()
 
@@ -41,7 +42,7 @@ router.get('/getoffers', authMiddleware, getOffers)
 
 // order routes 
 router.post('/order/createorder', authMiddleware, createOrder,)
-router.post('/order/ordercompleted', authMiddleware, updateOrderCompleted)
+router.put('/order/ordercompleted', authMiddleware, updateOrderCompleted)
 router.post('/order/orderfailed', authMiddleware, updateOrderFailed)
 router.get('/order/getorders', getOrders)
 router.get('/order/getorderdetails', authMiddleware, getOrderDetailsByOrderId)

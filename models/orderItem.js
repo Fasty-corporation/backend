@@ -20,18 +20,36 @@
 // })
 
 
-
-// module.exports = OrderItem
-
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const orderItemSchema = new mongoose.Schema({
+    orderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Order",
+        required: true,
+    },
+    shopId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Shop",
+        required: true,
+    },
+    productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+        required: true,
+    },
+    quantity: {
+        type: Number,
+        required: true,
+    },
+    price: {
+        type: Number,
+        required: true,
+    },
     orderDetails: {
         type: Object, // Sequelize's JSON maps to an Object in Mongoose
         required: true
     }
-}, { timestamps: true });
+});
 
-const OrderItem = mongoose.model('OrderItem', orderItemSchema);
-
-module.exports = OrderItem;
+module.exports = mongoose.model("OrderItem", orderItemSchema);

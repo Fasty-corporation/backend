@@ -4,31 +4,46 @@ const cartController = {
 
     // add to cart
     addToCart: async (req, res) => {
-        const { id } = req.user
-        const { quantity, productTypeId } = req.body
-
-        // if some fields are null 
-        if (!id || !quantity || !productTypeId) {
-            return res.status(500).send({ messsage: "error while adding to cart" })
+        const { id: userId } = req.user; // Extract user ID from token
+        const { quantity, productTypeId, productId } = req.body;
+    
+        // 🛑 Check for missing fields
+        if (!userId || !quantity || !productTypeId || !productId) {
+            return res.status(400).json({ message: "All fields are required!" });
         }
+    
         try {
-            const dbRes = await createCartService(quantity, productTypeId, id)
-            const { price } = await getProductPriceService(productTypeId)
-            if (!price) { return res.status(500).send({ message: "Error while adding to cart !" }) }
-            const cart = {
-                id: dbRes.id,
-                productTypeId,
-                productType: { price: price },
-                quantity: quantity
+            // ✅ Step 1: Add Product to Cart
+            const cartItem = await createCartService(quantity, productTypeId, productId, userId);
+            
+            if (!cartItem) {
+                return res.status(500).json({ message: "Failed to add item to cart" });
             }
-
-            return res.send(cart)
-
+    
+            // ✅ Step 2: Get Product Price
+            const productData = await getProductPriceService(productTypeId);
+    
+            if (!productData || !productData.price) {
+                return res.status(500).json({ message: "Failed to fetch product price" });
+            }
+    
+            // ✅ Step 3: Return Updated Cart Data
+            const cartResponse = {
+                cartId: cartItem.id,
+                productId,
+                productTypeId,
+                price: productData.price,
+                quantity
+            };
+    
+            return res.status(201).json({ message: "Item added to cart successfully", cart: cartResponse });
+    
         } catch (error) {
-            res.status(500).send({ message: "Error while adding to cart !" })
+            console.error("❌ Add to Cart Error:", error.message);
+            return res.status(500).json({ message: "Internal server error", error: error.message });
         }
     },
-
+    
     // increase qunatity on specific product
     increaseQuantity: async (req, res) => {
         const { quantity, productTypeId } = req.body
@@ -83,19 +98,28 @@ const cartController = {
     },
 
     // getting all cart products from db
-    getCart: async (req, res) => {
-        const { id } = req.user
-        if (!id) {
-            return res.status.send({ message: "error while getting the cart" })
+     getCart : async (req, res) => {
+        const { id: userId } = req.user;
+    
+        // 🛑 If userId is not found
+        if (!userId) {
+            return res.status(400).send({ message: "User not found while getting the cart!" });
         }
+    
         try {
-            const dbRes = await getCartProducts(id)
-            return res.send(dbRes);
+            const cartItems = await getCartProducts(userId);
+    
+            if (!cartItems.length) {
+                return res.status(200).send({ message: "Cart is empty", cartItems: [] });
+            }
+    
+            return res.status(200).json(cartItems);
+    
         } catch (error) {
-            res.status(400).send({ message: "error while getting the cart" })
+            console.error("❌ Error in getCart:", error.message);
+            res.status(500).send({ message: "Failed to get the cart!" });
         }
     }
-
 }
 
 module.exports = cartController

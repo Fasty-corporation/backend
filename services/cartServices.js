@@ -3,53 +3,78 @@ const ProductType = require("../models/productType");
 const Products = require("../models/products");
 
 const cartServices = {
-    createCartService: async (quantity, productTypeId, userId) => {
+    createCartService: async (quantity, productTypeId, productId, userId) => {
         try {
-            const dbRes = await Cart.create({ quantity, productTypeId, userId })
-            return dbRes
+            // ✅ Check if the product already exists in the cart
+            const existingCartItem = await Cart.findOne({ productId, productTypeId, userId });
+    
+            if (existingCartItem) {
+                // ✅ If product already exists, update the quantity
+                const updatedCartItem = await Cart.findOneAndUpdate(
+                    { productId, productTypeId, userId },
+                    { $inc: { quantity: quantity } }, // Increment the quantity
+                    { new: true }
+                );
+                return updatedCartItem;
+            } else {
+                // ✅ If product doesn't exist, create a new cart item
+                const newCartItem = await Cart.create({
+                    quantity,
+                    productTypeId,
+                    productId,
+                    userId
+                });
+                return newCartItem;
+            }
+    
         } catch (error) {
-            throw error
+            console.error("❌ Error in createCartService:", error.message);
+            throw new Error("Failed to add item to cart");
         }
     },
+    
 
-    getCartProducts: async (userId) => {
+     getCartProducts: async (userId) => {
         try {
-            if (!userId) { throw new Error("user not found") }
-            const dbRes = await Cart.findAll({
-                where: { userId },
-                attributes: ['id', 'quantity'],
-                include: [
-                    {
-                        model: ProductType,
-                        attributes: ['id', 'type', 'price'],
-                        include: [
-                            {
-                                model: Products,
-                                attributes: ['id', 'name', 'imageUrls']
-                            }
-                        ]
+            if (!userId) {
+                throw new Error("User not found");
+            }
+    
+            const cartItems = await Cart.find({ userId })
+                .populate({
+                    path: "productTypeId",
+                    select: "id type price",
+                    populate: {
+                        path: "productId",
+                        select: "id name imageUrls"
                     }
-                ]
-            });
-            // reforming the response
-            const formatedValues = dbRes.map((value) => {
-                return {
-                    id: value.id,
-                    quantity: value.quantity,
-                    productTypeId: value.productType.id,
-                    type: value.productType.type,
-                    price: value.productType.price,
-                    productId: value.productType.product.id,
-                    name: value.productType.product.name,
-                    imageUrls: value.productType.product.imageUrls,
-                }
-            })
-
-            return formatedValues
+                });
+    
+            // ✅ If cart is empty
+            if (!cartItems.length) {
+                return { message: "Cart is empty", cartItems: [] };
+            }
+    
+            // ✅ Formatted Response
+            const formattedCart = cartItems.map((item) => ({
+                cartId: item._id,
+                quantity: item.quantity,
+                productTypeId: item.productTypeId._id,
+                productType: item.productTypeId.type,
+                price: item.productTypeId.price,
+                productId: item.productTypeId.productId._id,
+                productName: item.productTypeId.productId.name,
+                productImage: item.productTypeId.productId.imageUrls,
+            }));
+    
+            return formattedCart;
+    
         } catch (error) {
-            throw error
+            console.error("❌ Error in getCartProducts:", error.message);
+            throw new Error("Failed to fetch cart products");
         }
     },
+    
     deleteCartService: async (userId, transaction) => {
         try {
             const options = { where: { userId } };

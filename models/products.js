@@ -37,7 +37,9 @@ const productSchema = new mongoose.Schema({
     description: {
         type: String,
         default: null
-    }
+    },
+    // stock: { type: Number, required: true }
+
 }, { timestamps: true });
 
 const Product = mongoose.model('Product', productSchema);

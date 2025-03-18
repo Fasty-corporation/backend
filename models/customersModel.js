@@ -32,9 +32,13 @@ const customerSchema = new mongoose.Schema({
         type:String,
         required:false
        },
+       productId : {
+        type:mongoose.Schema.Types.ObjectId,
+        ref : "Product"
+       }
 }, { timestamps: true });
 
 // customerSchema.index({ location: "2dsphere" }); // Enables geospatial queries
 
-const Customer = mongoose.model("UserCustomers", customerSchema);
-module.exports = Customer;
+module.exports= mongoose.model("UserCustomers", customerSchema);
+// module.exports = Customer;

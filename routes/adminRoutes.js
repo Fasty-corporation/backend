@@ -24,9 +24,10 @@ router.put("/subcategory/:id",upload.single("imageUrl"),editSubCategory);
 router.delete("/subcategory/:id",deleteSubCategory);
 router.get("/category/getsubcategoriesbycategory", getSubCategoriesByMainCategory)
 router.post("/add-product", upload.array("imageUrls", 5), addProduct);
+router.get("/all-products",getAllProducts)
 router.put("/edit-product/:id", upload.array("imageUrls", 5), editProduct);
 router.delete("/products/:id",deleteProduct);
-router.post('/addproducttype', adminAuthMiddleware, addProductType)
+router.post('/addproducttype', addProductType)
 router.post('/offer/createoffer', createOffer)
 router.post('/offer/giveoffer', adminAuthMiddleware, giveOffer)
 router.get('/getallproducts', getAllProducts)

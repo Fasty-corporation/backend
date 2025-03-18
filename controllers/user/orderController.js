@@ -2,61 +2,262 @@ const Razorpay = require('razorpay')
 const { getCartProducts, deleteCartService } = require('../../services/cartServices')
 const { findOfferbyId, deleteGivenOfferService } = require('../../services/offerServices')
 const { addTransactionService, createOrderService, createOrderItemService, updateTransactionService, getUserOrdersService, getOrderDetailsService } = require('../../services/orderServices')
-const sequelize = require('../../util/database')
+const sequelize = require('../../util/database');
+// const Razorpay = require("razorpay");
+// const { sequelize } = require("../../config/database");
+// const { Order, OrderItem, Cart, Shop, Product, Transaction } = require("../../models");
+const Order = require("../../models/order");
+const OrderItem = require("../../models/orderItem")
+const Cart = require("../../models/cart");
+const Shop = require("../../models/shops");
+const {Product} = require("../../models/products.js");
+const Transaction = require("../../models/transaction.js")
+const Customer = require("../../models/customersModel.js")
+const mongoose = require("mongoose");
+const Inventory = require("../../models/inventory.js");
 
 const orderController = {
+    
+    // const Razorpay = require("razorpay");
 
     createOrder: async (req, res) => {
-        const { email, id } = req.user
-        const { offerId } = req.body
+        const session = await mongoose.startSession();
+        session.startTransaction();
+    
         try {
-            if (!email || !id) {
-                throw new Error("error while creating order user not found")
+            const { email, id: userId } = req.user || {};
+            const { payment_method, customer_location } = req.body || {};
+    
+            if (!userId || !email) {
+                return res.status(400).json({ message: "User authentication details missing" });
             }
-            // taking all cart products
-            const cartProducts = await getCartProducts(id)
-
-            // calculating total price 
-            let totalPrice = cartProducts.reduce((prev, curr) => {
-                const productTotal = curr.quantity * curr.price;
-                return prev + productTotal;
-            }, 0)
-            
-            if (offerId) {
-                const appliedOffer = await findOfferbyId(offerId)
-                if (appliedOffer) { totalPrice = totalPrice - Math.floor((totalPrice * (appliedOffer.discount / 100))) }
+            if (!customer_location) {
+                return res.status(400).json({ message: "Customer location is required" });
             }
-            // including 5
-            totalPrice = totalPrice + 5
-
-            // razorpay instance
-            const amount = totalPrice * 100
-            const rzp = new Razorpay({
-                key_id: process.env.RZP_KEY_ID,
-                key_secret: process.env.RZP_KEY_SECRET
-            })
-            // creating the order
-            rzp.orders.create({ amount: amount, currency: 'INR' }, async (err, order) => {
-                try {
-                    if (err) {
-                        throw new Error(JSON.stringify(err))
-                    }
-                    await addTransactionService(order.id, totalPrice, email)
-                    res.send({ order, key_id: process.env.RZP_KEY_ID })
-
-                } catch (error) {
-                    res.status(400).send({ message: "error while creating order" })
-
+    
+            // Get cart items for the user
+            const cartProducts = await Cart.find({ userId }).populate("productId");
+    
+            if (!cartProducts.length) {
+                return res.status(400).json({ message: "Cart is empty" });
+            }
+    
+            let unavailableProducts = [];
+            let orders = [];
+    
+            for (const cartItem of cartProducts) {
+                const product = cartItem.productId;
+    
+                // Handle missing product references
+                if (!product || !product._id) {
+                    unavailableProducts.push(`Product ID ${cartItem.productId} is no longer available.`);
+                    continue;
                 }
-
-            })
-
+    
+                console.log("Checking inventory for:", product._id, "Quantity:", cartItem.quantity);
+    
+                // Check product inventory
+                const availableInventory = await Inventory.findOne({
+                    product_id: product._id,
+                    stock: { $gte: cartItem.quantity }
+                }).session(session);
+    
+                console.log("Available inventory:", availableInventory);
+    
+                if (!availableInventory) {
+                    unavailableProducts.push(`Product ${product.name} is out of stock.`);
+                    continue;
+                }
+    
+                let totalPrice = cartItem.quantity * availableInventory.price + 5; // Including delivery charge
+    
+                let orderData = {
+                    totalPrice,
+                    paidAmount: payment_method === "COD" ? 0 : totalPrice,
+                    dueAmount: payment_method === "COD" ? totalPrice : 0,
+                    location: customer_location,
+                    userId,
+                    shopId: availableInventory.shop_id,
+                    status: "Pending"
+                };
+    
+                // Handle Razorpay payment for online orders
+                if (payment_method !== "COD") {
+                    try {
+                        const rzp = new Razorpay({
+                            key_id: process.env.RZP_KEY_ID,
+                            key_secret: process.env.RZP_KEY_SECRET
+                        });
+    
+                        const razorpayOrder = await rzp.orders.create({
+                            amount: totalPrice * 100,
+                            currency: "INR"
+                        });
+    
+                        await Transaction.create([{
+                            transactionId: razorpayOrder.id,
+                            amount: totalPrice,
+                            email
+                        }], { session });
+    
+                        orderData.paymentId = razorpayOrder.id;
+                    } catch (rzpError) {
+                        console.error("❌ Razorpay Order Creation Failed:", rzpError);
+                        throw new Error("Payment processing failed");
+                    }
+                }
+    
+                // Create order in database
+                const createdOrder = await Order.create([orderData], { session });
+    
+                if (!createdOrder.length) {
+                    throw new Error("Order creation failed");
+                }
+    
+                // Insert order items
+                await OrderItem.insertMany(
+                    [{
+                        orderDetails: JSON.stringify(product),
+                        userId,
+                        orderId: createdOrder[0]._id,
+                        quantity: cartItem.quantity
+                    }],
+                    { session }
+                );
+    
+                // Update inventory stock
+                await Inventory.updateOne(
+                    { _id: availableInventory._id },
+                    { $inc: { stock: -cartItem.quantity } },
+                    { session }
+                );
+    
+                orders.push(createdOrder[0]);
+            }
+    
+            // If no orders were created, return error
+            if (orders.length === 0) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ message: "Some items in your cart are no longer available.", unavailableProducts });
+            }
+    
+            // Remove items from the cart after successful order placement
+            await Cart.deleteMany({ userId }).session(session);
+    
+            // Commit transaction
+            await session.commitTransaction();
+            session.endSession();
+    
+            return res.status(201).json({ message: "Orders placed successfully", orders });
+    
         } catch (error) {
-            console.log(error)
-            console.log(error.message)
-            res.status(500).send({ message: "internal server error", error })
+            console.error("❌ Order Creation Error:", error.message);
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(500).json({ message: "Internal server error", error: error.message });
         }
     },
+    
+    
+    // module.exports = { createOrder };
+    
+    // createOrder : async (req, res) => {
+    //     const { email, id } = req.user;
+    //     const { payment_method, customer_location } = req.body;
+    //     console.log("Request Body:", req.body);
+    //     console.log("User Data:", req.user);
+    //     try {
+    //         if (!email || !id || !customer_location) {
+    //             return res.status(400).json({ message: "Error: Missing customer details" });
+    //         }
+    
+    //         // Fetch cart products
+    //         const cartProducts = await Cart.findAll({ where: { userId: id }, include: [{ model: Product }] });
+    
+    //         if (!cartProducts.length) {
+    //             return res.status(400).json({ message: "Cart is empty" });
+    //         }
+    
+    //         // Fetch nearby shops (within 3km radius)
+    //         const nearbyShops = await Shop.findAll(); // Implement logic to filter by location
+    
+    //         if (!nearbyShops.length) {
+    //             return res.status(400).json({ message: "No nearby shops available" });
+    //         }
+    //         console.log("Request Body:", req.body);
+    //         console.log("User Data:", req.user);
+    //         // Split orders based on shop availability
+    //         const shopWiseOrders = {};
+    //         for (const cartItem of cartProducts) {
+    //             const product = cartItem.Product;
+    //             const availableShop = nearbyShops.find(shop => product.stock >= cartItem.quantity);
+                
+    //             if (availableShop) {
+    //                 if (!shopWiseOrders[availableShop.id]) shopWiseOrders[availableShop.id] = [];
+    //                 shopWiseOrders[availableShop.id].push({ product, quantity: cartItem.quantity });
+    //             } else {
+    //                 return res.status(400).json({ message: `Product ${product.name} is out of stock` });
+    //             }
+    //         }
+    
+    //         const orders = [];
+    //         const transaction = await sequelize.transaction();
+    
+    //         for (const [shopId, products] of Object.entries(shopWiseOrders)) {
+    //             let totalPrice = products.reduce((total, item) => total + (item.quantity * item.product.price), 0);
+    //             totalPrice += 5; // Delivery charge
+    
+    //             let orderData = {
+    //                 totalPrice,
+    //                 paidAmount: payment_method === "COD" ? 0 : totalPrice,
+    //                 dueAmount: payment_method === "COD" ? totalPrice : 0,
+    //                 location: customer_location,
+    //                 userId: id,
+    //                 shopId,
+    //                 status: "Pending",
+    //             };
+    
+    //             if (payment_method !== "COD") {
+    //                 // Online payment via Razorpay
+    //                 const rzp = new Razorpay({ key_id: process.env.RZP_KEY_ID, key_secret: process.env.RZP_KEY_SECRET });
+    //                 const razorpayOrder = await rzp.orders.create({ amount: totalPrice * 100, currency: "INR" });
+    
+    //                 await Transaction.create({
+    //                     transactionId: razorpayOrder.id,
+    //                     amount: totalPrice,
+    //                     email,
+    //                 }, { transaction });
+    
+    //                 orderData.paymentId = razorpayOrder.id;
+    //             }
+    
+    //             const createdOrder = await Order.create(orderData, { transaction });
+    
+    //             await OrderItem.bulkCreate(
+    //                 products.map(({ product, quantity }) => ({
+    //                     orderDetails: JSON.stringify(product),
+    //                     userId: id,
+    //                     orderId: createdOrder.id,
+    //                     quantity,
+    //                 })),
+    //                 { transaction }
+    //             );
+    
+    //             orders.push(createdOrder);
+    //         }
+    
+    //         await transaction.commit();
+    //         res.json({ message: "Orders placed successfully", orders });
+    
+    //     } catch (error) {
+    //         console.error("Order Creation Error:", error);
+    //         res.status(500).json({ message: "Internal server error", error: error.message });
+    //     }
+    // },
+    
+    // module.exports = { createOrder };
+    
     updateOrderCompleted: async (req, res) => {
         const { id } = req.user
         const { orderId, paymentId, address, offerId } = req.body

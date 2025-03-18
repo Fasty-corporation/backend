@@ -17,37 +17,53 @@
 //     address: { type: JSON, allowNull: false }
 
 // })
-
-// module.exports = Order
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema({
-    orderStatus: {
-        type: String,
-        default: 'Completed'
-    },
-    orderId: {
-        type: String,
-        required: true
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "UserCustomers",
+        required: true,
     },
     totalAmount: {
         type: Number,
-        required: true
+        required: true,
     },
     discountPercentage: {
         type: Number,
-        default: 0
+        default: 0,
     },
     finalAmount: {
         type: Number,
-        required: true
+        required: true,
     },
     address: {
-        type: Object, // Sequelize's JSON maps to an Object in Mongoose
-        required: true
-    }
-}, { timestamps: true });
+        type: String,
+        required: true,
+    },
+    paymentMethod: {
+        type: String,
+        enum: ["Online", "COD"],
+        required: true,
+    },
+    paymentStatus: {
+        type: String,
+        enum: ["Pending", "Completed", "Failed"],
+        default: "Pending",
+    },
+    orderStatus: {
+        type: String,
+        enum: ["Processing", "Shipped", "Delivered", "Cancelled"],
+        default: "Processing",
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+    cartItems: [{ productId: mongoose.Schema.Types.ObjectId, quantity: Number }],
 
-const Order = mongoose.model('Order', orderSchema);
+});
 
-module.exports = Order;
+module.exports = mongoose.model("Order", orderSchema);
+
+
